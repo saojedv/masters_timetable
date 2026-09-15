@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Horario · Máster PLN 2026-2027</title>
+<style>
+  :root{
+    --paper:#eef1f6;
+    --ink:#1a2238;
+    --ink-soft:#4a5170;
+    --line:#c9cfdd;
+    --tab-inactive:#dde2ee;
+    --accent-s1:#2f6f6a;
+    --accent-s2:#b5556b;
+    --card:#ffffff;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:"Iowan Old Style","Georgia",serif;
+  }
+  .wrap{max-width:1100px;margin:0 auto;padding:36px 20px 60px;}
+  .headerrow{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:16px;
+    flex-wrap:wrap;
+  }
+  h1{
+    font-size:26px;
+    letter-spacing:.01em;
+    margin:0 0 2px;
+    font-weight:600;
+  }
+  .subtitle{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    color:var(--ink-soft);
+    font-size:13.5px;
+    margin:0 0 26px;
+  }
+
+  /* --- tz switch --- */
+  .tzswitch{
+    flex:0 0 auto;
+    display:flex;
+    align-items:center;
+    background:#fff;
+    border:1px solid var(--line);
+    border-radius:20px;
+    padding:3px;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    box-shadow:0 1px 2px rgba(0,0,0,.06);
+  }
+  .tzswitch button{
+    border:none;
+    background:transparent;
+    cursor:pointer;
+    font-family:inherit;
+    font-size:12px;
+    font-weight:700;
+    letter-spacing:.02em;
+    padding:7px 14px;
+    border-radius:16px;
+    color:var(--ink-soft);
+    transition:background .15s, color .15s;
+  }
+  .tzswitch button.active{
+    background:var(--ink);
+    color:#fff;
+  }
+
+  /* --- folder tabs --- */
+  .tabbar{
+    display:flex;
+    align-items:flex-end;
+    gap:4px;
+    overflow-x:auto;
+    padding-bottom:0;
+    scrollbar-width:thin;
+  }
+  .tab{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    flex:0 0 auto;
+    cursor:pointer;
+    background:var(--tab-inactive);
+    color:var(--ink-soft);
+    border:1px solid var(--line);
+    border-bottom:none;
+    border-radius:8px 8px 0 0;
+    padding:9px 16px 8px;
+    font-size:12.5px;
+    font-weight:600;
+    letter-spacing:.02em;
+    position:relative;
+    top:1px;
+    transition:background .15s, color .15s;
+    white-space:nowrap;
+    text-transform:capitalize;
+  }
+  .tab.active{
+    background:var(--card);
+    color:var(--ink);
+    border-color:var(--line);
+  }
+  .tab.active.s1{ box-shadow: inset 0 3px 0 var(--accent-s1); }
+  .tab.active.s2{ box-shadow: inset 0 3px 0 var(--accent-s2); }
+
+  .panel{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;
+    padding:22px 22px 8px;
+  }
+  .empty{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    color:var(--ink-soft);
+    font-size:14px;
+    padding:50px 10px 60px;
+    text-align:center;
+    font-style:normal;
+  }
+
+  /* --- grid --- */
+  .grid-outer{position:relative;}
+  .daynames{
+    display:flex;
+    margin-left:56px;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    font-size:11.5px;
+    font-weight:700;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    margin-bottom:6px;
+  }
+  .daynames span{flex:1;text-align:center;padding-bottom:4px;border-bottom:1px solid var(--line);}
+
+  .grid{
+    position:relative;
+    margin-left:56px;
+    background-image:repeating-linear-gradient(
+      to bottom,
+      var(--line) 0px, var(--line) 1px,
+      transparent 1px, transparent var(--hourpx)
+    );
+  }
+  .grid-inner{position:relative;}
+  .hourlabels{
+    position:absolute;
+    left:0;
+    top:0;
+    width:56px;
+    transform:translateX(-56px);
+  }
+  .hourlabel{
+    position:absolute;
+    left:0;
+    width:48px;
+    text-align:right;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    font-size:10.5px;
+    color:var(--ink-soft);
+    transform:translateY(-6px);
+  }
+  .daycol-bg{position:absolute;top:0;bottom:0;border-right:1px solid var(--line);}
+  .block{
+    position:absolute;
+    border-radius:5px;
+    padding:4px 6px;
+    color:#fff;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    font-size:10.6px;
+    line-height:1.28;
+    overflow:hidden;
+    box-shadow:0 1px 2px rgba(0,0,0,.15);
+  }
+  .block b{display:block;font-size:10.8px;font-weight:700;margin-bottom:2px;}
+  .block .dr{display:block;font-size:11.6px;font-weight:800;margin-bottom:2px;letter-spacing:.01em;}
+  .block .t{opacity:.92;font-size:9.8px;}
+
+  /* --- legend --- */
+  .legend{
+    margin:22px 0 18px;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  }
+  .legend-title{
+    font-size:10.5px;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+    color:var(--ink-soft);
+    font-weight:700;
+    margin:0 0 8px;
+  }
+  .legend-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(230px,1fr));
+    gap:6px 14px;
+  }
+  .legend-item{
+    display:flex;
+    align-items:flex-start;
+    gap:7px;
+    font-size:11.5px;
+    color:var(--ink);
+  }
+  .swatch{width:10px;height:10px;border-radius:3px;margin-top:2px;flex:0 0 auto;}
+  .legend-item .name{font-weight:600;}
+  .legend-item .meta{display:block;color:var(--ink-soft);font-size:10.3px;}
+
+  @media (max-width:640px){
+    .panel{padding:16px 10px 8px;}
+    .grid, .daynames{margin-left:34px;}
+    .hourlabels{width:34px;transform:translateX(-34px);}
+    .hourlabel{width:30px;font-size:9px;}
+    .block{font-size:9.4px;}
+    .block b{font-size:9.6px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="headerrow">
+    <div>
+      <h1>Máster en PLN y Aplicaciones de la IA a la Lingüística</h1>
+      <p class="subtitle">Horario provisional 2026–2027 · actualizado 17/06/2026 · vista mes a mes</p>
+    </div>
+    <div class="tzswitch" id="tzswitch">
+      <button id="btn-pen" class="active">Hora Península</button>
+      <button id="btn-can">Hora Canaria</button>
+    </div>
+  </div>
+
+  <div class="tabbar" id="tabbar"></div>
+  <div class="panel" id="panel"></div>
+</div>
+
+<script>
+const DAY_NAMES = ["Lun","Mar","Mié","Jue","Vie"];
+const HOUR_START = 9, HOUR_END = 20;
+const HOUR_PX = 46;
+
+// Hours below are stored in PENINSULA time (as published). Canary time = Peninsula - 1h.
+let tzOffset = 0; // 0 = Península, 1 = Canarias
+
+const courses = {
+  1:{name:"Seminario de sistemas informáticos para PLN", prof:"Por confirmar", color:"#2f6f6a", sem:1},
+  2:{name:"Seminario de programación para PLN", prof:"Por confirmar", color:"#b5556b", sem:1},
+  3:{name:"Seminario de procesamiento de datos", prof:"Por confirmar", color:"#5b7fbd", sem:1},
+  4:{name:"Análisis computacional e interpretación de datos lingüísticos", prof:"Por confirmar", color:"#c98a3b", sem:1},
+  5:{name:"Digitalización, estandarización y estructuración de datos lingüísticos", prof:"Sara Gómez Seibane / por confirmar", color:"#7a5ea8", sem:1},
+  6:{name:"Aprendizaje automático para el PLN", prof:"Por confirmar", color:"#4a8b5c", sem:1},
+  7:{name:"Etiquetado POS y lematización", prof:"Raquel Mateo Mendaza", color:"#c65b4e", sem:1},
+  8:{name:"Anotación sintáctica", prof:"Miguel Lacalle Palacios, Raquel Vea Escarza", color:"#3f6b8a", sem:1},
+  9:{name:"Bancos de datos lingüísticos", prof:"Ana Elvira Ojanguren López", color:"#a67c3d", sem:1},
+  10:{name:"Anotación semántica", prof:"D06AYUDR06 / Roberto Torre Alonso", color:"#8a5b8f", sem:1},
+  11:{name:"Análisis de sentimientos, afecto y connotación", prof:"Miguel Barrio Segura", color:"#5a9e8f", sem:2},
+  12:{name:"Clasificación, resumen y extracción de la información", prof:"Julio Rubio", color:"#b0475a", sem:2},
+  13:{name:"Traducción automática", prof:"Por confirmar", color:"#6b7fc9", sem:2},
+  14:{name:"PLN en la industria y el sector financiero", prof:"Julio Rubio", color:"#9a7b4a", sem:2},
+  15:{name:"PLN en ciberseguridad", prof:"Julio Rubio", color:"#4f8fa6", sem:2},
+  16:{name:"Minería de datos y análisis de sentimiento: sector turístico", prof:"Por confirmar", color:"#8f5a3f", sem:2},
+  17:{name:"Chatbots y asistentes por voz", prof:"Por confirmar", color:"#6a8a4a", sem:2},
+};
+
+const sessions = [
+  {c:1,d:0,s:10,e:12,f:"2026-09-07",t:"2026-10-29"},
+  {c:1,d:2,s:10,e:12,f:"2026-09-07",t:"2026-10-29"},
+  {c:1,d:3,s:10,e:11,f:"2026-09-07",t:"2026-10-29"},
+
+  {c:2,d:0,s:16,e:19,f:"2026-09-07",t:"2026-10-29"},
+  {c:2,d:4,s:16,e:18,f:"2026-09-07",t:"2026-10-29"},
+
+  {c:3,d:1,s:9,e:12.5,f:"2026-09-08",t:"2026-10-29"},
+  {c:3,d:4,s:18,e:20,f:"2026-09-11",t:"2026-10-16"},
+
+  {c:4,d:0,s:9,e:12,f:"2026-11-02",t:"2026-12-11"},
+  {c:4,d:0,s:14,e:16,f:"2026-11-02",t:"2026-12-11"},
+  {c:4,d:3,s:13,e:16,f:"2026-11-02",t:"2026-12-11"},
+
+  {c:5,d:0,s:12,e:14,f:"2026-11-02",t:"2026-12-22"},
+  {c:5,d:2,s:10,e:12,f:"2026-11-02",t:"2026-12-22"},
+  {c:5,d:3,s:12,e:13,f:"2026-11-02",t:"2026-12-22"},
+
+  {c:6,d:0,s:16,e:20,f:"2026-11-02",t:"2026-12-11"},
+  {c:6,d:4,s:16,e:20,f:"2026-11-02",t:"2026-12-11"},
+
+  {c:7,d:2,s:16.5,e:20,f:"2026-09-14",t:"2026-12-04"},
+
+  {c:8,d:4,s:9.5,e:13.5,f:"2026-09-11",t:"2026-11-13"},
+
+  {c:9,d:1,s:16,e:20,f:"2026-09-08",t:"2026-11-10"},
+
+  {c:10,d:3,s:16,e:18.5,f:"2026-09-10",t:"2026-09-17"},
+  {c:10,d:3,s:16,e:19,f:"2026-09-24",t:"2026-11-26"},
+  {c:10,d:3,s:16,e:18.5,f:"2026-12-03",t:"2026-12-10"},
+
+  {c:11,d:0,s:10,e:12,f:"2027-02-01",t:"2027-03-25"},
+  {c:11,d:2,s:10,e:12,f:"2027-02-01",t:"2027-03-25"},
+  {c:11,d:3,s:12,e:13,f:"2027-02-01",t:"2027-03-25"},
+
+  {c:12,d:0,s:12,e:14,f:"2027-02-01",t:"2027-03-26"},
+  {c:12,d:1,s:10,e:12,f:"2027-02-01",t:"2027-03-26"},
+  {c:12,d:3,s:10,e:11,f:"2027-02-01",t:"2027-03-26"},
+
+  {c:13,d:1,s:12,e:14,f:"2027-02-01",t:"2027-03-19"},
+  {c:13,d:2,s:12,e:14,f:"2027-02-01",t:"2027-03-19"},
+  {c:13,d:3,s:11,e:12,f:"2027-02-01",t:"2027-03-19"},
+
+  {c:14,d:1,s:16,e:18,f:"2027-04-06",t:"2027-05-27"},
+  {c:14,d:2,s:18,e:20,f:"2027-04-06",t:"2027-05-27"},
+  {c:14,d:3,s:17,e:18,f:"2027-04-06",t:"2027-05-27"},
+
+  {c:15,d:1,s:18,e:20,f:"2027-04-06",t:"2027-05-27"},
+  {c:15,d:2,s:16,e:18,f:"2027-04-06",t:"2027-05-27"},
+  {c:15,d:3,s:16,e:17,f:"2027-04-06",t:"2027-05-27"},
+
+  {c:16,d:4,s:9,e:13,f:"2027-03-05",t:"2027-05-21"},
+  {c:17,d:4,s:16,e:20,f:"2027-03-05",t:"2027-05-21"},
+];
+
+const months = [
+  {key:"2026-09",label:"Sep. 2026",sem:1},
+  {key:"2026-10",label:"Oct. 2026",sem:1},
+  {key:"2026-11",label:"Nov. 2026",sem:1},
+  {key:"2026-12",label:"Dic. 2026",sem:1},
+  {key:"2027-01",label:"Ene. 2027",sem:2},
+  {key:"2027-02",label:"Feb. 2027",sem:2},
+  {key:"2027-03",label:"Mar. 2027",sem:2},
+  {key:"2027-04",label:"Abr. 2027",sem:2},
+  {key:"2027-05",label:"May. 2027",sem:2},
+];
+
+let currentKey = "2026-09";
+
+function monthBounds(key){
+  const [y,m] = key.split("-").map(Number);
+  const start = new Date(y, m-1, 1);
+  const end = new Date(y, m, 0);
+  return {start,end};
+}
+function overlaps(sess, mStart, mEnd){
+  const f = new Date(sess.f), t = new Date(sess.t);
+  return f <= mEnd && t >= mStart;
+}
+function fmtHour(h){
+  const shifted = h - tzOffset;
+  const hh = Math.floor(shifted);
+  const mm = Math.round((shifted-hh)*60);
+  return hh + (mm ? ":"+String(mm).padStart(2,"0") : ":00");
+}
+function fmtDate(iso){
+  const [y,m,d] = iso.split("-");
+  return d+"/"+m;
+}
+const MONTH_ABBR = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+function fmtDateLong(iso){
+  const [y,m,d] = iso.split("-").map(Number);
+  return parseInt(d)+" "+MONTH_ABBR[m-1];
+}
+
+const tabbar = document.getElementById("tabbar");
+const panel = document.getElementById("panel");
+
+months.forEach((m)=>{
+  const tab = document.createElement("div");
+  tab.className = "tab s"+m.sem;
+  tab.textContent = m.label;
+  tab.dataset.key = m.key;
+  tab.addEventListener("click",()=>selectMonth(m.key));
+  tabbar.appendChild(tab);
+});
+
+document.getElementById("btn-pen").addEventListener("click",()=>setTz(0));
+document.getElementById("btn-can").addEventListener("click",()=>setTz(1));
+
+function setTz(offset){
+  tzOffset = offset;
+  document.getElementById("btn-pen").classList.toggle("active", offset===0);
+  document.getElementById("btn-can").classList.toggle("active", offset===1);
+  renderMonth(currentKey);
+}
+
+function selectMonth(key){
+  currentKey = key;
+  document.querySelectorAll(".tab").forEach(t=>{
+    t.classList.toggle("active", t.dataset.key===key);
+  });
+  renderMonth(key);
+}
+
+function renderMonth(key){
+  const {start,end} = monthBounds(key);
+  const active = sessions.filter(s=>overlaps(s,start,end));
+
+  panel.innerHTML = "";
+
+  if(active.length===0){
+    panel.innerHTML = '<div class="empty">Sin clases programadas este mes.</div>';
+    return;
+  }
+
+  const totalHours = HOUR_END - HOUR_START;
+  const gridHeight = totalHours*HOUR_PX;
+
+  const daynames = document.createElement("div");
+  daynames.className = "daynames";
+  DAY_NAMES.forEach(d=>{
+    const s = document.createElement("span");
+    s.textContent = d;
+    daynames.appendChild(s);
+  });
+  panel.appendChild(daynames);
+
+  const gridOuter = document.createElement("div");
+  gridOuter.className = "grid-outer";
+
+  const grid = document.createElement("div");
+  grid.className = "grid";
+  grid.style.setProperty("--hourpx", HOUR_PX+"px");
+  grid.style.height = gridHeight+"px";
+
+  const hourlabels = document.createElement("div");
+  hourlabels.className = "hourlabels";
+  for(let h=HOUR_START; h<=HOUR_END; h++){
+    const lab = document.createElement("div");
+    lab.className = "hourlabel";
+    lab.style.top = ((h-HOUR_START)*HOUR_PX)+"px";
+    lab.textContent = (h-tzOffset)+":00";
+    hourlabels.appendChild(lab);
+  }
+  grid.appendChild(hourlabels);
+
+  for(let d=0; d<5; d++){
+    const col = document.createElement("div");
+    col.className = "daycol-bg";
+    col.style.left = "calc((100% ) * "+(d/5)+")";
+    col.style.width = "calc((100% ) * "+(1/5)+")";
+    grid.appendChild(col);
+  }
+
+  const usedCourses = new Set();
+  active.forEach(s=>{
+    usedCourses.add(s.c);
+    const course = courses[s.c];
+    const block = document.createElement("div");
+    block.className = "block";
+    block.style.background = course.color;
+    block.style.top = ((s.s-HOUR_START)*HOUR_PX)+2+"px";
+    block.style.height = ((s.e-s.s)*HOUR_PX)-4+"px";
+    block.style.left = "calc((100% ) * "+(s.d/5)+" + 3px)";
+    block.style.width = "calc((100% ) * "+(1/5)+" - 6px)";
+
+    const dateRange = fmtDateLong(s.f)+" \u2192 "+fmtDateLong(s.t);
+
+    block.innerHTML = "<b>"+s.c+". "+course.name+"</b>"+
+      "<span class='dr'>"+dateRange+"</span>"+
+      "<span class='t'>"+fmtHour(s.s)+"\u2013"+fmtHour(s.e)+"</span>";
+    grid.appendChild(block);
+  });
+
+  gridOuter.appendChild(grid);
+  panel.appendChild(gridOuter);
+
+  const legend = document.createElement("div");
+  legend.className = "legend";
+  const lt = document.createElement("div");
+  lt.className = "legend-title";
+  lt.textContent = "Asignaturas activas este mes";
+  legend.appendChild(lt);
+  const lg = document.createElement("div");
+  lg.className = "legend-grid";
+  Array.from(usedCourses).sort((a,b)=>a-b).forEach(cid=>{
+    const course = courses[cid];
+    const item = document.createElement("div");
+    item.className = "legend-item";
+    item.innerHTML = "<span class='swatch' style='background:"+course.color+"'></span>"+
+      "<span><span class='name'>"+cid+". "+course.name+"</span>"+
+      "<span class='meta'>"+course.prof+"</span></span>";
+    lg.appendChild(item);
+  });
+  legend.appendChild(lg);
+  panel.appendChild(legend);
+}
+
+selectMonth("2026-09");
+</script>
+</body>
+</html>
