@@ -485,7 +485,14 @@ function renderMonth(key){
   panel.appendChild(legend);
 }
 
-selectMonth("2026-09");
+const hoy = new Date();
+const claveHoy = hoy.getFullYear() + "-" + String(hoy.getMonth() + 1).padStart(2, "0");
+const claves = months.map(m => m.key);
+selectMonth(
+  claves.includes(claveHoy) ? claveHoy
+  : claveHoy < claves[0] ? claves[0]
+  : claves[claves.length - 1]
+);
 </script>
 </body>
 </html>
