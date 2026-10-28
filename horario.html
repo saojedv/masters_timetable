@@ -258,7 +258,7 @@ const courses = {
   10:{name:"Anotación semántica", prof:"D06AYUDR06 / Roberto Torre Alonso", color:"#8a5b8f", sem:1},
   11:{name:"Análisis de sentimientos, afecto y connotación", prof:"Miguel Barrio Segura", color:"#5a9e8f", sem:2},
   12:{name:"Clasificación, resumen y extracción de la información", prof:"Julio Rubio", color:"#b0475a", sem:2},
-  13:{name:"Traducción automática", prof:"Por confirmar", color:"#6b7fc9", sem:2},
+  13:{name:"Traducción automática", prof:"Andrés Canga (1–8 feb) + por confirmar", color:"#6b7fc9", sem:2},  
   14:{name:"PLN en la industria y el sector financiero", prof:"Julio Rubio", color:"#9a7b4a", sem:2},
   15:{name:"PLN en ciberseguridad", prof:"Julio Rubio", color:"#4f8fa6", sem:2},
   16:{name:"Minería de datos y análisis de sentimiento: sector turístico", prof:"Por confirmar", color:"#8f5a3f", sem:2},
@@ -305,9 +305,13 @@ const sessions = [
   {c:12,d:1,s:10,e:12,f:"2027-02-01",t:"2027-03-26"},
   {c:12,d:3,s:10,e:11,f:"2027-02-01",t:"2027-03-26"},
 
-  {c:13,d:1,s:12,e:14,f:"2027-02-01",t:"2027-03-19"},
-  {c:13,d:2,s:12,e:14,f:"2027-02-01",t:"2027-03-19"},
-  {c:13,d:3,s:11,e:12,f:"2027-02-01",t:"2027-03-19"},
+  {c:13,d:1,s:12,e:14,f:"2027-02-01",t:"2027-03-02"},
+  {c:13,d:2,s:12,e:14,f:"2027-02-01",t:"2027-03-02"},
+  {c:13,d:3,s:11,e:12,f:"2027-02-01",t:"2027-03-02"},
+  // Andrés Canga (días sueltos)
+  {c:13,d:0,s:16,e:20,f:"2027-02-01",t:"2027-02-08"},
+  {c:13,d:2,s:16,e:19,f:"2027-02-03",t:"2027-02-03"},
+  {c:13,d:3,s:16,e:20,f:"2027-02-04",t:"2027-02-04"},
 
   {c:14,d:1,s:16,e:18,f:"2027-04-06",t:"2027-05-27"},
   {c:14,d:2,s:18,e:20,f:"2027-04-06",t:"2027-05-27"},
@@ -317,8 +321,8 @@ const sessions = [
   {c:15,d:2,s:16,e:18,f:"2027-04-06",t:"2027-05-27"},
   {c:15,d:3,s:16,e:17,f:"2027-04-06",t:"2027-05-27"},
 
-  {c:16,d:4,s:9,e:13,f:"2027-03-05",t:"2027-05-21"},
-  {c:17,d:4,s:16,e:20,f:"2027-03-05",t:"2027-05-21"},
+  {c:16,d:0,s:16,e:20,f:"2027-03-01",t:"2027-05-03"},
+  {c:17,d:4,s:16,e:20,f:"2027-03-05",t:"2027-05-14"},
 ];
 
 const months = [
@@ -453,8 +457,8 @@ function renderMonth(key){
     block.style.left = "calc((100% ) * "+(s.d/5)+" + 3px)";
     block.style.width = "calc((100% ) * "+(1/5)+" - 6px)";
 
-    const dateRange = fmtDateLong(s.f)+" \u2192 "+fmtDateLong(s.t);
-
+    const dateRange = s.f===s.t ? fmtDateLong(s.f) : fmtDateLong(s.f)+" \u2192 "+fmtDateLong(s.t);    
+    
     block.innerHTML = "<b>"+s.c+". "+course.name+"</b>"+
       "<span class='dr'>"+dateRange+"</span>"+
       "<span class='t'>"+fmtHour(s.s)+"\u2013"+fmtHour(s.e)+"</span>";
