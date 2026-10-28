@@ -445,6 +445,7 @@ function renderMonth(key){
     col.style.left = "calc((100% ) * "+(d/5)+")";
     col.style.width = "calc((100% ) * "+(1/5)+")";
     grid.appendChild(col);
+    if(key===claveHoyMes && d===diaHoy) col.style.background="rgba(47,111,106,.10)";
   }
 
   const usedCourses = new Set();
