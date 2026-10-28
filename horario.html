@@ -397,6 +397,9 @@ function selectMonth(key){
 function renderMonth(key){
   const {start,end} = monthBounds(key);
   const active = sessions.filter(s=>overlaps(s,start,end));
+  const hoyD = new Date();
+  const claveHoyMes = hoyD.getFullYear()+"-"+String(hoyD.getMonth()+1).padStart(2,"0");
+  const diaHoy = (hoyD.getDay()+6)%7;
 
   panel.innerHTML = "";
 
