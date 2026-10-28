@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Horario · Máster PLN 2026-2027</title>
 <style>
   :root{
@@ -225,7 +226,8 @@
   <div class="headerrow">
     <div>
       <h1>Máster en PLN y Aplicaciones de la IA a la Lingüística</h1>
-      <p class="subtitle">Horario provisional 2026–2027 · actualizado 28/10/2026 · vista mes a mes</p>    </div>
+      <p class="subtitle">Horario provisional 2026–2027 · actualizado 28/10/2026 · vista mes a mes</p>
+    </div>
     <div class="tzswitch" id="tzswitch">
       <button id="btn-pen" class="active">Hora Península</button>
       <button id="btn-can">Hora Canaria</button>
@@ -243,6 +245,7 @@ const HOUR_PX = 46;
 
 // Hours below are stored in PENINSULA time (as published). Canary time = Peninsula - 1h.
 let tzOffset = 0; // 0 = Península, 1 = Canarias
+try { tzOffset = localStorage.getItem("tz")==="1" ? 1 : 0; } catch(e){}
 
 const courses = {
   1:{name:"Seminario de sistemas informáticos para PLN", prof:"Por confirmar", color:"#2f6f6a", sem:1},
@@ -257,7 +260,7 @@ const courses = {
   10:{name:"Anotación semántica", prof:"D06AYUDR06 / Roberto Torre Alonso", color:"#8a5b8f", sem:1},
   11:{name:"Análisis de sentimientos, afecto y connotación", prof:"Miguel Barrio Segura", color:"#5a9e8f", sem:2},
   12:{name:"Clasificación, resumen y extracción de la información", prof:"Julio Rubio", color:"#b0475a", sem:2},
-  13:{name:"Traducción automática", prof:"Andrés Canga (1–8 feb) + por confirmar", color:"#6b7fc9", sem:2},  
+  13:{name:"Traducción automática", prof:"Andrés Canga (1–8 feb) + por confirmar", color:"#6b7fc9", sem:2},
   14:{name:"PLN en la industria y el sector financiero", prof:"Julio Rubio", color:"#9a7b4a", sem:2},
   15:{name:"PLN en ciberseguridad", prof:"Julio Rubio", color:"#4f8fa6", sem:2},
   16:{name:"Minería de datos y análisis de sentimiento: sector turístico", prof:"Por confirmar", color:"#8f5a3f", sem:2},
@@ -337,6 +340,24 @@ const months = [
 ];
 
 let currentKey = "2026-09";
+let selectedCourse = null;
+
+// Fecha de fin del último tramo de cada asignatura
+const courseEnd = {};
+sessions.forEach(s=>{
+  if(!courseEnd[s.c] || s.t > courseEnd[s.c]) courseEnd[s.c] = s.t;
+});
+function isFinished(cid){
+  const h = new Date();
+  const hoyIso = h.getFullYear()+"-"+String(h.getMonth()+1).padStart(2,"0")+"-"+String(h.getDate()).padStart(2,"0");
+  return courseEnd[cid] < hoyIso;
+}
+
+function isPast(iso){
+  const h = new Date();
+  const hoyIso = h.getFullYear()+"-"+String(h.getMonth()+1).padStart(2,"0")+"-"+String(h.getDate()).padStart(2,"0");
+  return iso < hoyIso;
+}
 
 function monthBounds(key){
   const [y,m] = key.split("-").map(Number);
@@ -381,12 +402,14 @@ document.getElementById("btn-can").addEventListener("click",()=>setTz(1));
 
 function setTz(offset){
   tzOffset = offset;
+  try { localStorage.setItem("tz", offset); } catch(e){}
   document.getElementById("btn-pen").classList.toggle("active", offset===0);
   document.getElementById("btn-can").classList.toggle("active", offset===1);
   renderMonth(currentKey);
 }
 
 function selectMonth(key){
+  selectedCourse = null;
   currentKey = key;
   document.querySelectorAll(".tab").forEach(t=>{
     t.classList.toggle("active", t.dataset.key===key);
@@ -444,8 +467,8 @@ function renderMonth(key){
     col.className = "daycol-bg";
     col.style.left = "calc((100% ) * "+(d/5)+")";
     col.style.width = "calc((100% ) * "+(1/5)+")";
-    grid.appendChild(col);
     if(key===claveHoyMes && d===diaHoy) col.style.background="rgba(47,111,106,.10)";
+    grid.appendChild(col);
   }
 
   const usedCourses = new Set();
@@ -459,9 +482,14 @@ function renderMonth(key){
     block.style.height = ((s.e-s.s)*HOUR_PX)-4+"px";
     block.style.left = "calc((100% ) * "+(s.d/5)+" + 3px)";
     block.style.width = "calc((100% ) * "+(1/5)+" - 6px)";
+    if(selectedCourse){
+      if(s.c!==selectedCourse) block.style.opacity = "0.15";
+    } else if(isPast(s.t)){
+      block.style.opacity = "0.12";
+    }
 
-    const dateRange = s.f===s.t ? fmtDateLong(s.f) : fmtDateLong(s.f)+" \u2192 "+fmtDateLong(s.t);    
-    
+    const dateRange = s.f===s.t ? fmtDateLong(s.f) : fmtDateLong(s.f)+" \u2192 "+fmtDateLong(s.t);
+
     block.innerHTML = "<b>"+s.c+". "+course.name+"</b>"+
       "<span class='dr'>"+dateRange+"</span>"+
       "<span class='t'>"+fmtHour(s.s)+"\u2013"+fmtHour(s.e)+"</span>";
@@ -483,6 +511,16 @@ function renderMonth(key){
     const course = courses[cid];
     const item = document.createElement("div");
     item.className = "legend-item";
+    item.style.cursor = "pointer";
+    if(selectedCourse){
+      if(cid!==selectedCourse) item.style.opacity = "0.4";
+    } else if(isFinished(cid)){
+      item.style.opacity = "0.4";
+    }
+    item.addEventListener("click",()=>{
+      selectedCourse = (selectedCourse===cid) ? null : cid;
+      renderMonth(currentKey);
+    });
     item.innerHTML = "<span class='swatch' style='background:"+course.color+"'></span>"+
       "<span><span class='name'>"+cid+". "+course.name+"</span>"+
       "<span class='meta'>"+course.prof+"</span></span>";
@@ -492,6 +530,11 @@ function renderMonth(key){
   panel.appendChild(legend);
 }
 
+// Marca el botón de zona horaria guardado
+document.getElementById("btn-pen").classList.toggle("active", tzOffset===0);
+document.getElementById("btn-can").classList.toggle("active", tzOffset===1);
+
+// Abre el mes actual (o el más cercano dentro del curso)
 const hoy = new Date();
 const claveHoy = hoy.getFullYear() + "-" + String(hoy.getMonth() + 1).padStart(2, "0");
 const claves = months.map(m => m.key);
