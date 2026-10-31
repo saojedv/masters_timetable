@@ -210,6 +210,12 @@
   .swatch{width:10px;height:10px;border-radius:3px;margin-top:2px;flex:0 0 auto;}
   .legend-item .name{font-weight:600;}
   .legend-item .meta{display:block;color:var(--ink-soft);font-size:10.3px;}
+  .done-tag{
+    display:inline-block;margin-left:6px;
+    font-size:9.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--ink-soft);background:var(--tab-inactive);
+    border-radius:8px;padding:1px 7px;vertical-align:middle;
+  }
 
   /* --- cuadro hoy / próxima clase --- */
   .nextbox{
@@ -546,6 +552,7 @@ function renderMonth(key){
     });
     item.innerHTML = "<span class='swatch' style='background:"+course.color+"'></span>"+
       "<span><span class='name'>"+cid+". "+course.name+"</span>"+
+      (isFinished(cid) ? "<span class='done-tag'>Terminada</span>" : "")+
       "<span class='meta'>"+course.prof+"</span></span>";
     lg.appendChild(item);
   });
