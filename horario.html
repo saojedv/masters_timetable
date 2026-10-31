@@ -238,6 +238,23 @@
     border-radius:10px;padding:2px 8px;
   }
 
+  /* --- selector mes/semana + navegación semanal --- */
+  .viewrow{margin:0 0 14px;}
+  .panel.full{border-radius:8px;}
+  .weeknav{
+    display:flex;align-items:center;gap:8px;margin-bottom:16px;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  }
+  .weeknav button{
+    border:1px solid var(--line);background:#fff;color:var(--ink);
+    border-radius:16px;padding:6px 13px;font-size:12.5px;font-weight:700;cursor:pointer;
+  }
+  .weeknav button:hover:not(:disabled){background:var(--tab-inactive);}
+  .weeknav button:disabled{opacity:.35;cursor:default;}
+  .wk-label{flex:1;text-align:center;font-weight:700;font-size:13.5px;}
+  .daynames small{display:block;font-size:10.5px;font-weight:600;letter-spacing:0;text-transform:none;margin-top:1px;}
+  .daynames span.today{color:var(--accent-s1);}
+
   @media (max-width:640px){
     .panel{padding:16px 10px 8px;}
     .grid, .daynames{margin-left:34px;}
@@ -262,6 +279,13 @@
   </div>
 
   <div class="nextbox" id="nextbox"></div>
+
+  <div class="viewrow">
+    <div class="tzswitch" id="viewswitch">
+      <button id="btn-month" class="active">Mes</button>
+      <button id="btn-week">Semana</button>
+    </div>
+  </div>
 
   <div class="tabbar" id="tabbar"></div>
   <div class="panel" id="panel"></div>
@@ -428,14 +452,53 @@ months.forEach((m)=>{
 document.getElementById("btn-pen").addEventListener("click",()=>setTz(0));
 document.getElementById("btn-can").addEventListener("click",()=>setTz(1));
 
+let viewMode = "month";
+try { if(localStorage.getItem("view")==="week") viewMode = "week"; } catch(e){}
+let weekStart = null; // lunes (ISO) de la semana que se muestra
+
+function todayIso(){
+  const h = new Date();
+  return h.getFullYear()+"-"+String(h.getMonth()+1).padStart(2,"0")+"-"+String(h.getDate()).padStart(2,"0");
+}
+function mondayOf(iso){ return addDaysIso(iso, -dowOfIso(iso)); }
+const firstMonday = mondayOf(sessions.reduce((a,s)=>s.f<a?s.f:a, sessions[0].f));
+const lastMonday  = mondayOf(sessions.reduce((a,s)=>s.t>a?s.t:a, sessions[0].t));
+function defaultWeek(){
+  let iso = todayIso();
+  const dw = dowOfIso(iso);
+  if(dw>=5) iso = addDaysIso(iso, 7-dw); // sábado/domingo → semana siguiente
+  let w = mondayOf(iso);
+  if(w<firstMonday) w = firstMonday;
+  if(w>lastMonday) w = lastMonday;
+  return w;
+}
+
+function rerender(){
+  if(viewMode==="week") renderWeek(); else renderMonth(currentKey);
+}
+
 function setTz(offset){
   tzOffset = offset;
   try { localStorage.setItem("tz", offset); } catch(e){}
   document.getElementById("btn-pen").classList.toggle("active", offset===0);
   document.getElementById("btn-can").classList.toggle("active", offset===1);
   renderNext();
-  renderMonth(currentKey);
+  rerender();
 }
+
+function setView(mode){
+  viewMode = mode;
+  try { localStorage.setItem("view", mode); } catch(e){}
+  selectedCourse = null;
+  document.getElementById("btn-month").classList.toggle("active", mode==="month");
+  document.getElementById("btn-week").classList.toggle("active", mode==="week");
+  tabbar.style.display = mode==="month" ? "flex" : "none";
+  panel.classList.toggle("full", mode==="week");
+  if(mode==="week" && !weekStart) weekStart = defaultWeek();
+  rerender();
+}
+document.getElementById("btn-month").addEventListener("click",()=>setView("month"));
+document.getElementById("btn-week").addEventListener("click",()=>setView("week"));
 
 function selectMonth(key){
   selectedCourse = null;
@@ -446,29 +509,17 @@ function selectMonth(key){
   renderMonth(key);
 }
 
-function renderMonth(key){
-  const {start,end} = monthBounds(key);
-  const active = sessions.filter(s=>overlaps(s,start,end));
-  const hoyD = new Date();
-  const claveHoyMes = hoyD.getFullYear()+"-"+String(hoyD.getMonth()+1).padStart(2,"0");
-  const diaHoy = (hoyD.getDay()+6)%7;
-
-  panel.innerHTML = "";
-
-  if(active.length===0){
-    panel.innerHTML = '<div class="empty">Sin clases programadas este mes.</div>';
-    return;
-  }
-
-  const totalHours = HOUR_END - HOUR_START;
-  const gridHeight = totalHours*HOUR_PX;
+// Dibuja cabecera de días + cuadrícula + bloques. items = [{s, past}]
+function drawGrid(items, labels, todayCol){
+  const gridHeight = (HOUR_END - HOUR_START)*HOUR_PX;
 
   const daynames = document.createElement("div");
   daynames.className = "daynames";
-  DAY_NAMES.forEach(d=>{
-    const s = document.createElement("span");
-    s.textContent = d;
-    daynames.appendChild(s);
+  labels.forEach((l,i)=>{
+    const sp = document.createElement("span");
+    sp.innerHTML = l;
+    if(i===todayCol) sp.className = "today";
+    daynames.appendChild(sp);
   });
   panel.appendChild(daynames);
 
@@ -496,13 +547,13 @@ function renderMonth(key){
     col.className = "daycol-bg";
     col.style.left = "calc((100% ) * "+(d/5)+")";
     col.style.width = "calc((100% ) * "+(1/5)+")";
-    if(key===claveHoyMes && d===diaHoy) col.style.background="rgba(47,111,106,.10)";
+    if(d===todayCol) col.style.background="rgba(47,111,106,.10)";
     grid.appendChild(col);
   }
 
-  const usedCourses = new Set();
-  active.forEach(s=>{
-    usedCourses.add(s.c);
+  const used = new Set();
+  items.forEach(({s,past})=>{
+    used.add(s.c);
     const course = courses[s.c];
     const block = document.createElement("div");
     block.className = "block";
@@ -513,7 +564,7 @@ function renderMonth(key){
     block.style.width = "calc((100% ) * "+(1/5)+" - 6px)";
     if(selectedCourse){
       if(s.c!==selectedCourse) block.style.opacity = "0.15";
-    } else if(isPast(s.t)){
+    } else if(past){
       block.style.opacity = "0.12";
     }
 
@@ -527,16 +578,19 @@ function renderMonth(key){
 
   gridOuter.appendChild(grid);
   panel.appendChild(gridOuter);
+  return used;
+}
 
+function drawLegend(used, title){
   const legend = document.createElement("div");
   legend.className = "legend";
   const lt = document.createElement("div");
   lt.className = "legend-title";
-  lt.textContent = "Asignaturas activas este mes";
+  lt.textContent = title;
   legend.appendChild(lt);
   const lg = document.createElement("div");
   lg.className = "legend-grid";
-  Array.from(usedCourses).sort((a,b)=>a-b).forEach(cid=>{
+  Array.from(used).sort((a,b)=>a-b).forEach(cid=>{
     const course = courses[cid];
     const item = document.createElement("div");
     item.className = "legend-item";
@@ -548,7 +602,7 @@ function renderMonth(key){
     }
     item.addEventListener("click",()=>{
       selectedCourse = (selectedCourse===cid) ? null : cid;
-      renderMonth(currentKey);
+      rerender();
     });
     item.innerHTML = "<span class='swatch' style='background:"+course.color+"'></span>"+
       "<span><span class='name'>"+cid+". "+course.name+"</span>"+
@@ -558,6 +612,72 @@ function renderMonth(key){
   });
   legend.appendChild(lg);
   panel.appendChild(legend);
+}
+
+function renderMonth(key){
+  const {start,end} = monthBounds(key);
+  const active = sessions.filter(s=>overlaps(s,start,end));
+  const hoyD = new Date();
+  const claveHoyMes = hoyD.getFullYear()+"-"+String(hoyD.getMonth()+1).padStart(2,"0");
+  const diaHoy = (hoyD.getDay()+6)%7;
+
+  panel.innerHTML = "";
+
+  if(active.length===0){
+    panel.innerHTML = '<div class="empty">Sin clases programadas este mes.</div>';
+    return;
+  }
+
+  const items = active.map(s=>({s, past:isPast(s.t)}));
+  const used = drawGrid(items, DAY_NAMES, key===claveHoyMes ? diaHoy : -1);
+  drawLegend(used, "Asignaturas activas este mes");
+}
+
+function renderWeek(){
+  if(!weekStart) weekStart = defaultWeek();
+  const dates = [0,1,2,3,4].map(i=>addDaysIso(weekStart,i));
+  const hoy = todayIso();
+
+  const items = [];
+  sessions.forEach(s=>{
+    const date = dates[s.d];
+    if(s.f<=date && date<=s.t) items.push({s, past: date<hoy});
+  });
+
+  panel.innerHTML = "";
+
+  const nav = document.createElement("div");
+  nav.className = "weeknav";
+  const prev = document.createElement("button");
+  prev.textContent = "\u2190";
+  prev.title = "Semana anterior";
+  prev.disabled = weekStart<=firstMonday;
+  prev.addEventListener("click",()=>{ weekStart = addDaysIso(weekStart,-7); selectedCourse=null; renderWeek(); });
+  const label = document.createElement("div");
+  label.className = "wk-label";
+  label.textContent = fmtDateLong(dates[0])+" \u2013 "+fmtDateLong(dates[4])+" "+dates[4].slice(0,4);
+  const next = document.createElement("button");
+  next.textContent = "\u2192";
+  next.title = "Semana siguiente";
+  next.disabled = weekStart>=lastMonday;
+  next.addEventListener("click",()=>{ weekStart = addDaysIso(weekStart,7); selectedCourse=null; renderWeek(); });
+  const hoyBtn = document.createElement("button");
+  hoyBtn.textContent = "Hoy";
+  hoyBtn.addEventListener("click",()=>{ weekStart = defaultWeek(); selectedCourse=null; renderWeek(); });
+  nav.appendChild(prev); nav.appendChild(label); nav.appendChild(next); nav.appendChild(hoyBtn);
+  panel.appendChild(nav);
+
+  if(items.length===0){
+    const emp = document.createElement("div");
+    emp.className = "empty";
+    emp.textContent = "Sin clases esta semana.";
+    panel.appendChild(emp);
+    return;
+  }
+
+  const labels = dates.map((d,i)=>DAY_NAMES[i]+"<small>"+fmtDateLong(d)+"</small>");
+  const used = drawGrid(items, labels, dates.indexOf(hoy));
+  drawLegend(used, "Asignaturas esta semana");
 }
 
 /* ---------- Hoy / Próxima clase ---------- */
@@ -628,6 +748,7 @@ selectMonth(
   : claveHoy < claves[0] ? claves[0]
   : claves[claves.length - 1]
 );
+setView(viewMode);
 </script>
 </body>
 </html>
