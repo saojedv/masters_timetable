@@ -255,6 +255,25 @@
   .daynames small{display:block;font-size:10.5px;font-weight:600;letter-spacing:0;text-transform:none;margin-top:1px;}
   .daynames span.today{color:var(--accent-s1);}
 
+  /* --- días en los que no se cursa + temas --- */
+  .block.skipped{
+    background:#fff;
+    border:2px dashed currentColor;
+    box-shadow:none;
+    padding:2px 5px;
+  }
+  .block .st{display:block;font-weight:800;font-size:10.8px;margin-bottom:2px;}
+  .block .tm{
+    display:inline-block;font-weight:800;font-size:11px;
+    background:rgba(255,255,255,.25);border-radius:4px;padding:0 6px;margin-bottom:2px;
+  }
+  .nb-gap{margin-top:12px;}
+  .nb-muted{opacity:.6;}
+  .nb-skip{
+    font-size:10.5px;font-weight:700;color:var(--ink-soft);background:var(--tab-inactive);
+    border-radius:10px;padding:2px 8px;
+  }
+
   @media (max-width:640px){
     .panel{padding:16px 10px 8px;}
     .grid, .daynames{margin-left:34px;}
@@ -452,6 +471,24 @@ months.forEach((m)=>{
 document.getElementById("btn-pen").addEventListener("click",()=>setTz(0));
 document.getElementById("btn-can").addEventListener("click",()=>setTz(1));
 
+// Asignaturas que NO se dan todas las semanas: solo estas fechas tienen clase.
+// El resto de días de su horario semanal se marca como "no se cursa".
+const CLASS_DATES = {
+  6: { // Aprendizaje automático
+    "2026-11-02":"Tema 1",
+    "2026-11-06":"Tema 2",
+    "2026-11-09":"Tema 3",
+    "2026-11-16":"Tema 4",
+    "2026-11-23":"Tema 5",
+    "2026-11-30":"Tema 6",
+    "2026-12-04":"Tema 7"
+  }
+};
+function classInfo(s, date){
+  const cd = CLASS_DATES[s.c];
+  return {skip: !!cd && !(date in cd), tema: cd ? (cd[date]||"") : ""};
+}
+
 let viewMode = "month";
 try { if(localStorage.getItem("view")==="week") viewMode = "week"; } catch(e){}
 let weekStart = null; // lunes (ISO) de la semana que se muestra
@@ -552,12 +589,14 @@ function drawGrid(items, labels, todayCol){
   }
 
   const used = new Set();
-  items.forEach(({s,past})=>{
+  const hoyIso = todayIso();
+  items.forEach(({s,past,skip,tema,date})=>{
     used.add(s.c);
     const course = courses[s.c];
     const block = document.createElement("div");
-    block.className = "block";
-    block.style.background = course.color;
+    block.className = "block"+(skip ? " skipped" : "");
+    if(skip){ block.style.color = course.color; }
+    else { block.style.background = course.color; }
     block.style.top = ((s.s-HOUR_START)*HOUR_PX)+2+"px";
     block.style.height = ((s.e-s.s)*HOUR_PX)-4+"px";
     block.style.left = "calc((100% ) * "+(s.d/5)+" + 3px)";
@@ -565,14 +604,21 @@ function drawGrid(items, labels, todayCol){
     if(selectedCourse){
       if(s.c!==selectedCourse) block.style.opacity = "0.15";
     } else if(past){
-      block.style.opacity = "0.12";
+      block.style.opacity = skip ? "0.4" : "0.12";
     }
 
-    const dateRange = s.f===s.t ? fmtDateLong(s.f) : fmtDateLong(s.f)+" \u2192 "+fmtDateLong(s.t);
-
-    block.innerHTML = "<b>"+s.c+". "+course.name+"</b>"+
-      "<span class='dr'>"+dateRange+"</span>"+
-      "<span class='t'>"+fmtHour(s.s)+"\u2013"+fmtHour(s.e)+"</span>";
+    const horas = fmtHour(s.s)+"\u2013"+fmtHour(s.e);
+    if(skip){
+      block.innerHTML = "<b>"+s.c+". "+course.name+"</b>"+
+        "<span class='st'>"+(date===hoyIso ? "Hoy no se cursa" : "No se cursa este d\u00eda")+"</span>"+
+        "<span class='t'>"+horas+"</span>";
+    } else {
+      const dateRange = s.f===s.t ? fmtDateLong(s.f) : fmtDateLong(s.f)+" \u2192 "+fmtDateLong(s.t);
+      block.innerHTML = "<b>"+s.c+". "+course.name+"</b>"+
+        (tema ? "<span class='tm'>"+tema+"</span>" : "")+
+        "<span class='dr'>"+dateRange+"</span>"+
+        "<span class='t'>"+horas+"</span>";
+    }
     grid.appendChild(block);
   });
 
@@ -641,7 +687,7 @@ function renderWeek(){
   const items = [];
   sessions.forEach(s=>{
     const date = dates[s.d];
-    if(s.f<=date && date<=s.t) items.push({s, past: date<hoy});
+    if(s.f<=date && date<=s.t) items.push(Object.assign({s, date, past: date<hoy}, classInfo(s,date)));
   });
 
   panel.innerHTML = "";
@@ -698,38 +744,49 @@ function dowOfIso(iso){
   const [y,m,d] = iso.split("-").map(Number);
   return (new Date(Date.UTC(y,m-1,d)).getUTCDay()+6)%7;
 }
+function sessionsOn(date, minEnd){
+  const dw = dowOfIso(date);
+  return sessions
+    .filter(s=>s.d===dw && s.f<=date && date<=s.t && s.e>minEnd)
+    .map(s=>Object.assign({s,date}, classInfo(s,date)))
+    .sort((a,b)=>a.s.s-b.s.s);
+}
 function findNext(){
   const now = madridNow();
-  for(let i=0;i<400;i++){
-    const date = addDaysIso(now.iso,i);
-    const dw = dowOfIso(date);
-    const list = sessions
-      .filter(s=>s.d===dw && s.f<=date && date<=s.t && (i>0 || s.e>now.hour))
-      .sort((a,b)=>a.s-b.s);
-    if(list.length) return {i,date,list,now};
+  const today = sessionsOn(now.iso, now.hour);
+  let next = null;
+  if(!today.some(x=>!x.skip)){
+    for(let i=1;i<400;i++){
+      const date = addDaysIso(now.iso,i);
+      const list = sessionsOn(date,-1).filter(x=>!x.skip);
+      if(list.length){ next = {i,date,list}; break; }
+    }
   }
-  return null;
+  return {now,today,next};
+}
+function nbLines(list, nowHour, isToday){
+  return list.map(x=>{
+    const c = courses[x.s.c];
+    const live = isToday && !x.skip && x.s.s<=nowHour;
+    return "<div class='nb-line"+(x.skip ? " nb-muted" : "")+"'><span class='nb-sw' style='background:"+c.color+"'></span>"+
+      "<b>"+fmtHour(x.s.s)+"\u2013"+fmtHour(x.s.e)+"</b> "+c.name+
+      (x.tema ? " \u00b7 "+x.tema : "")+
+      (x.skip ? " <span class='nb-skip'>Sin clase hoy</span>" : "")+
+      (live ? " <span class='nb-live'>en curso</span>" : "")+"</div>";
+  }).join("");
 }
 function renderNext(){
   const box = document.getElementById("nextbox");
   const r = findNext();
-  if(!r){
-    box.innerHTML = "<div class='nb-title'>Próxima clase</div><div class='nb-line'>No quedan clases programadas.</div>";
-    return;
+  let html = "";
+  if(r.today.length) html += "<div class='nb-title'>Hoy</div>"+nbLines(r.today, r.now.hour, true);
+  if(r.next){
+    const fecha = DAY_FULL[dowOfIso(r.next.date)]+" "+fmtDateLong(r.next.date);
+    const title = r.next.i===1 ? "Ma\u00f1ana \u00b7 "+fecha : "Pr\u00f3xima clase \u00b7 "+fecha;
+    html += "<div class='nb-title"+(r.today.length ? " nb-gap" : "")+"'>"+title+"</div>"+nbLines(r.next.list, r.now.hour, false);
   }
-  const fecha = DAY_FULL[dowOfIso(r.date)]+" "+fmtDateLong(r.date);
-  let title;
-  if(r.i===0) title = "Hoy";
-  else if(r.i===1) title = "Mañana · "+fecha;
-  else title = "Próxima clase · "+fecha;
-  const lines = r.list.map(s=>{
-    const c = courses[s.c];
-    const live = r.i===0 && s.s<=r.now.hour;
-    return "<div class='nb-line'><span class='nb-sw' style='background:"+c.color+"'></span>"+
-      "<b>"+fmtHour(s.s)+"\u2013"+fmtHour(s.e)+"</b> "+c.name+
-      (live ? " <span class='nb-live'>en curso</span>" : "")+"</div>";
-  }).join("");
-  box.innerHTML = "<div class='nb-title'>"+title+"</div>"+lines;
+  if(!html) html = "<div class='nb-title'>Pr\u00f3xima clase</div><div class='nb-line'>No quedan clases programadas.</div>";
+  box.innerHTML = html;
 }
 
 // Marca el botón de zona horaria guardado
