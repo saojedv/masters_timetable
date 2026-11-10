@@ -267,6 +267,9 @@
     display:inline-block;font-weight:800;font-size:11px;
     background:rgba(255,255,255,.25);border-radius:4px;padding:0 6px;margin-bottom:2px;
   }
+  .block .ti{display:block;font-weight:700;font-size:10.6px;margin:1px 0 2px;line-height:1.25;}
+  .block .de{display:block;font-size:9.8px;opacity:.92;margin-bottom:3px;}
+  .block .pt{display:block;font-size:9.6px;opacity:.95;line-height:1.3;}
   .nb-gap{margin-top:12px;}
   .nb-muted{opacity:.6;}
   .nb-skip{
@@ -313,7 +316,7 @@
 <script>
 const DAY_NAMES = ["Lun","Mar","Mié","Jue","Vie"];
 const HOUR_START = 9, HOUR_END = 20;
-const HOUR_PX = 46;
+const HOUR_PX = 50;
 
 // Hours below are stored in PENINSULA time (as published). Canary time = Peninsula - 1h.
 let tzOffset = 0; // 0 = Península, 1 = Canarias
@@ -484,9 +487,34 @@ const CLASS_DATES = {
     "2026-12-04":"Tema 7"
   }
 };
+CLASS_DATES[4] = { // Análisis computacional e interpretación de datos lingüísticos
+  "2026-11-02":{title:"Experimentos, variables y datos", detail:"Temas 1, 2 y 3 · Excel"},
+  "2026-11-05":{title:"Frecuencias y posición",          detail:"Tema 4 · Excel"},
+  "2026-11-09":{title:"Dispersión, forma y gráficos",    detail:"Tema 4 · Excel"},
+  "2026-11-12":{title:"Inferencia y normalidad",         detail:"Tema 5 · Excel"},
+  "2026-11-16":{title:"Pruebas t y correlaciones",       detail:"Tema 5 · Excel"},
+  "2026-11-19":{title:"ANOVA e interpretación",          detail:"Temas 5 y 6 · Excel"},
+  "2026-11-23":{title:"Aprendizaje estadístico",         detail:"Tema 7 · Orange"},
+  "2026-11-26":{title:"Aprendizaje no supervisado",      detail:"Tema 8 · Orange"},
+  "2026-11-30":{title:"Aprendizaje supervisado",         detail:"Tema 8 · Orange"},
+  "2026-12-03":{title:"Evaluación de modelos",          detail:"Tema 8 · Orange"}
+};
+
+// Reparto de cada jornada entre profesores (horas peninsulares) por día de la semana (0=lun ... 4=vie)
+const PARTS = {
+  4: {
+    0: [[9,11,"Erlantz","Temario"],[11,14,"Javier","Ejercicios"]],
+    3: [[9,10,"Erlantz","Temario"],[10,12,"Javier","Ejercicios"]]
+  }
+};
+
 function classInfo(s, date){
   const cd = CLASS_DATES[s.c];
-  return {skip: !!cd && !(date in cd), tema: cd ? (cd[date]||"") : ""};
+  if(!cd) return {skip:false, tema:"", title:"", detail:""};
+  const v = cd[date];
+  if(v===undefined) return {skip:true, tema:"", title:"", detail:""};
+  if(typeof v==="string") return {skip:false, tema:v, title:"", detail:""};
+  return {skip:false, tema:v.tag||"", title:v.title||"", detail:v.detail||""};
 }
 
 let viewMode = "month";
@@ -590,7 +618,7 @@ function drawGrid(items, labels, todayCol){
 
   const used = new Set();
   const hoyIso = todayIso();
-  items.forEach(({s,past,skip,tema,date})=>{
+  items.forEach(({s,past,skip,tema,title,detail,date})=>{
     used.add(s.c);
     const course = courses[s.c];
     const block = document.createElement("div");
@@ -612,6 +640,15 @@ function drawGrid(items, labels, todayCol){
       block.innerHTML = "<b>"+s.c+". "+course.name+"</b>"+
         "<span class='st'>"+(date===hoyIso ? "Hoy no se cursa" : "No se cursa este d\u00eda")+"</span>"+
         "<span class='t'>"+horas+"</span>";
+    } else if(date && (title || detail)){
+      const parts = PARTS[s.c] && PARTS[s.c][s.d];
+      block.innerHTML = "<b>"+s.c+". "+course.name+"</b>"+
+        (tema ? "<span class='tm'>"+tema+"</span>" : "")+
+        (title ? "<span class='ti'>"+title+"</span>" : "")+
+        (detail ? "<span class='de'>"+detail+"</span>" : "")+
+        (parts
+          ? parts.map(x=>"<span class='pt'>"+fmtHour(x[0])+"\u2013"+fmtHour(x[1])+" "+x[2]+" \u00b7 "+x[3]+"</span>").join("")
+          : "<span class='t'>"+horas+"</span>");
     } else {
       const dateRange = s.f===s.t ? fmtDateLong(s.f) : fmtDateLong(s.f)+" \u2192 "+fmtDateLong(s.t);
       block.innerHTML = "<b>"+s.c+". "+course.name+"</b>"+
@@ -771,6 +808,7 @@ function nbLines(list, nowHour, isToday){
     return "<div class='nb-line"+(x.skip ? " nb-muted" : "")+"'><span class='nb-sw' style='background:"+c.color+"'></span>"+
       "<b>"+fmtHour(x.s.s)+"\u2013"+fmtHour(x.s.e)+"</b> "+c.name+
       (x.tema ? " \u00b7 "+x.tema : "")+
+      (x.title ? " \u00b7 "+x.title : "")+
       (x.skip ? " <span class='nb-skip'>Sin clase hoy</span>" : "")+
       (live ? " <span class='nb-live'>en curso</span>" : "")+"</div>";
   }).join("");
